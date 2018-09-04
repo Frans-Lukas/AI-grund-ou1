@@ -3,6 +3,7 @@
 MRDS_URL = 'localhost:50000'
 
 from lokarriaexample3 import *;
+from Point import *;
 
 HEADERS = {"Content-type": "application/json", "Accept": "text/json"}
 
@@ -11,6 +12,7 @@ class UnexpectedResponse(Exception): pass
 
 
 def readJsonFileToList(file):
+    point = Point()
     return 0;
 
 if __name__ == '__main__':
@@ -28,7 +30,7 @@ if __name__ == '__main__':
     try:
         laser = getLaser()
         laserAngles = getLaserAngles()
-        print('The rightmost laser bean has angle %.3f deg from x-axis (streight forward) and distance %.3f meters.' % (
+        print('The rightmost laser beam has angle %.3f deg from x-axis (streight forward) and distance %.3f meters.' % (
             laserAngles[0], laser['Echoes'][0]
         ))
         print('Beam 1: %.3f Beam 269: %.3f Beam 270: %.3f' % (
