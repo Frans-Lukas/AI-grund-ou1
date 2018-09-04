@@ -12,14 +12,34 @@ class UnexpectedResponse(Exception): pass
 
 
 def readJsonFileToList(file):
-    orientation = Orientation(1,2,3,4)
-    position = Position(0,0,0)
-    point = Point(orientation, position, 0)
-    print('{0} and {1} and {2}'.format(point.orientation.x, point.orientation.z, point.position.x))
+    with open(file, 'r') as f:
+        array = json.load(f)
+
+    for element in array:
+        orientation = element["Pose"]["Orientation"]
+        position = element["Pose"]["Position"]
+        timestamp = element["Timestamp"]
+
+        point = get_point(get_orientation(orientation), get_position(position), timestamp)
+        print('{0} and {1} and {2}'.format(point.orientation.x, point.orientation.z, point.position.x))
+
     return 0
 
+
+def get_point(orientation, position, timestamp):
+    return Point(orientation, position, timestamp);
+
+
+def get_orientation(orientation):
+    return Orientation(orientation["W"], orientation["X"], orientation["Y"], orientation["Z"])
+
+
+def get_position(position):
+    return Position(position["X"], position["Y"], position["Z"])
+
+
 if __name__ == '__main__':
-    readJsonFileToList(0)
+    readJsonFileToList("Path-around-table-and-back.json")
     # print('Sending commands to MRDS server', MRDS_URL)
     # try:
     #     print('Telling the robot to go straight ahead.')
