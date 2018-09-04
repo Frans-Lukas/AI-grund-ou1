@@ -14,6 +14,7 @@ MRDS_URL = 'localhost:50000'
 
 import http.client, json, time
 from math import sin, cos, pi, atan2
+import myJsonParser as myJsonParser
 
 HEADERS = {"Content-type": "application/json", "Accept": "text/json"}
 
@@ -77,7 +78,9 @@ def get_robot_position():
     if (response.status == 200):
         poseData = response.read()
         response.close()
-        return json.loads(poseData.decode())
+        array = json.loads(poseData.decode())
+        position = myJsonParser.get_position(array)
+        return myJsonParser.create_position(position)
     else:
         return UnexpectedResponse(response)
 
