@@ -69,7 +69,7 @@ def getLaserAngles():
         raise UnexpectedResponse(response)
 
 
-def getPose():
+def get_robot_position():
     """Reads the current position and orientation from the MRDS"""
     mrds = http.client.HTTPConnection(MRDS_URL)
     mrds.request('GET', '/lokarria/localization')
@@ -123,6 +123,6 @@ def qmult(q1, q2):
 
 def getHeading():
     """Returns the XY Orientation as a heading unit vector"""
-    return heading(getPose()['Pose']['Orientation'])
+    return heading(get_robot_position()['Pose']['Orientation'])
 
 
