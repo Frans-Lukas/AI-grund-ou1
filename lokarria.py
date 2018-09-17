@@ -52,20 +52,27 @@ def test_angle():
 
 
 def get_angular_speed_from_angle(degree_angle):
-    return (1 / 180) * degree_angle
+    return 0.4
 
 
 def heading_to_point(robot_heading):
     return Position(robot_heading.x, robot_heading.y, robot_heading.z)
 
 
-def choose_new_point_from_lookahead(target_point, robot_point, point_list, lookahead):
-    point_candidate = point_list[0]
-    for point in point_list:
-        if(point.timestamp > target_point.timestamp):
-            if(get_distance(robot_point, point) < lookahead and get_distance(robot_point, point) > get_distance(point_candidate, robot_point)):
-                
+def get_heading_point():
+    heading = getHeading()
+    return Position(heading['X'], heading['Y'], 0)
 
+
+def choose_new_point_from_lookahead(current_point, robot_point, point_list, lookahead):
+    point_candidate = current_point
+    for point in point_list:
+        if (point.timestamp > current_point.timestamp):
+            if (get_distance(robot_point, point.position) < lookahead and
+                        get_distance(robot_point, point.position) > get_distance(robot_point,
+                                                                                 point_candidate.position)):
+                point_candidate = point
+    return point_candidate
 
 
 if __name__ == '__main__':
@@ -75,24 +82,25 @@ if __name__ == '__main__':
     target_point = point_list[0]
     while True:
         # robot_position = get_robot_position()
-        target_point = choose_new_point_from_lookahead(target_point, point_list)
+        target_point = choose_new_point_from_lookahead(target_point, get_heading_point(), point_list, 1)
         robot_heading = getHeading()
         robot_pos = get_robot_position()
         print("distance: {}".format(get_distance(target_point.position, robot_pos)))
 
-        cross = np.cross([robot_heading['X'], robot_heading['Y']], [target_point.position.x, target_point.position.y])
+
+        robot_vector = [robot_heading['Y'], robot_heading['X']]
+        point_vector = [target_point.position.y, target_point.position.x]
+
+        cross = np.cross(robot_vector, point_vector)
         print("cross: {}".format(cross))
 
-        robot_vector = [robot_heading['X'], robot_heading['Y'], 0.1]
-        point_vector = [target_point.position.x, target_point.position.y, 0.1]
         angle_to_first_point = angle_between(robot_vector, point_vector)
         degree_angle = math.degrees(angle_to_first_point)
-        sfadfa = getHeading()
         # print('Current heading vector: X:{X:.3}, Y:{Y:.3}'.format(**getHeading()))
         if cross < 0:
-            postSpeed(-get_angular_speed_from_angle(degree_angle), 0.1)
+            postSpeed(-get_angular_speed_from_angle(degree_angle), 0)
         else:
-            postSpeed(get_angular_speed_from_angle(degree_angle), 0.1)
+            postSpeed(get_angular_speed_from_angle(degree_angle), 0)
         time.sleep(0.2)
 
         # try:
