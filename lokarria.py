@@ -39,7 +39,7 @@ def get_angle(p1, p2):
 
 
 def get_distance(p1, p2):
-    return math.hypot(p1.y - p2.y, p1.x - p2.x)
+    return math.hypot(p1.x - p2.x, p1.y - p2.y)
 
 
 def test_angle():
@@ -52,84 +52,79 @@ def test_angle():
 
 
 def get_angular_speed_from_angle(degree_angle):
-    return 0.4
+    return degree_angle / 180
 
 
 def heading_to_point(robot_heading):
     return Position(robot_heading.x, robot_heading.y, robot_heading.z)
 
 
-def get_heading_point():
+def get_heading_position():
     heading = getHeading()
     return Position(heading['X'], heading['Y'], 0)
 
 
-def choose_new_point_from_lookahead(current_point, robot_point, point_list, lookahead):
+def choose_new_point_from_lookahead(current_point, robot_position, point_list, lookahead):
     point_candidate = current_point
     for point in point_list:
-        if (point.timestamp > current_point.timestamp):
-            if (get_distance(robot_point, point.position) < lookahead and
-                        get_distance(robot_point, point.position) > get_distance(robot_point,
-                                                                                 point_candidate.position)):
+        if point.timestamp > current_point.timestamp:
+            dist_between_robot_and_new_point = get_distance(robot_position, point.position)
+            dist_between_robot_and_candidate = get_distance(robot_position, point_candidate.position)
+            if dist_between_robot_and_new_point > lookahead and dist_between_robot_and_new_point > dist_between_robot_and_candidate:
                 point_candidate = point
     return point_candidate
+
+
+# 1. Ta ut heading vector A
+# 2. Ta ut vector vi ska till B
+# 3. Normalisera vektorerna A och B ( Längden ska vara 1 )
+# 4. Ta reda på hur många grader man behöver vända vektor A för att den ska lägga sig på X-axel.
+# 5. Rotera även vektor B med lika många grader
+# 6. arcsin(By) ger om det är + lr -
+# 7. arcos(Bx) ger vinkel
+
+def position_to_vector(position):
+    return [position.x, position.y]
+
+
+def vector_to_position(v):
+    return Position(v[0], v[1], 0)
+
+
+def normalize_vector(v):
+    return [x / np.linalg.norm(v) for x in v]
+
+
+def rad_to_rotation_matrix(rad):
+    c, s = np.cos(rad), np.sin(rad)
+    R = np.array(((c, -s), (s, c)))
+    return R
 
 
 if __name__ == '__main__':
     test_angle()
     point_list = myJsonParser.read_json_file_to_list("Path-around-table-and-back.json")
 
-    target_point = point_list[0]
+    target_point = point_list[len(point_list) - 1]
+    target_vector = target_point.position
+    lookahead = 0.1
     while True:
-        # robot_position = get_robot_position()
-        target_point = choose_new_point_from_lookahead(target_point, get_heading_point(), point_list, 1)
-        robot_heading = getHeading()
-        robot_pos = get_robot_position()
-        print("distance: {}".format(get_distance(target_point.position, robot_pos)))
+        heading_vector = position_to_vector(get_heading_position())
+        robot_position = get_robot_position()
+        #target_point = choose_new_point_from_lookahead(target_point, robot_position, point_list, lookahead  )
+        print("x: {} y: {}".format(target_point.position.x, target_point.position.y))
+        target_vector = position_to_vector(target_point.position)
 
-
-        robot_vector = [robot_heading['Y'], robot_heading['X']]
-        point_vector = [target_point.position.y, target_point.position.x]
-
-        cross = np.cross(robot_vector, point_vector)
-        print("cross: {}".format(cross))
-
-        angle_to_first_point = angle_between(robot_vector, point_vector)
-        degree_angle = math.degrees(angle_to_first_point)
-        # print('Current heading vector: X:{X:.3}, Y:{Y:.3}'.format(**getHeading()))
-        if cross < 0:
-            postSpeed(-get_angular_speed_from_angle(degree_angle), 0)
+        target_normalized_vector = normalize_vector(target_vector)
+        robot_normalized_vector = normalize_vector(heading_vector)
+        angle_between_heading_and_x = get_angle(vector_to_position(robot_normalized_vector),
+                                                vector_to_position([1, 0, 0]))
+        rotation_matrix = rad_to_rotation_matrix(angle_between_heading_and_x)
+        target_normalized_and_rotated_vector = np.matmul(rotation_matrix, target_normalized_vector)
+        left_or_right = np.arcsin(target_normalized_and_rotated_vector[1])
+        rotation_angle = np.arccos(target_normalized_and_rotated_vector[0])
+        if left_or_right < 0:
+            postSpeed(get_angular_speed_from_angle(math.degrees(rotation_angle)), 0)
         else:
-            postSpeed(get_angular_speed_from_angle(degree_angle), 0)
-        time.sleep(0.2)
-
-        # try:
-        #     print('Telling the robot to go straight ahead.')
-        #     pos = get_robot_position()
-        # except UnexpectedResponse as ex:
-        #     print('Unexpected response from server when sending speed commands:', ex)
-        #
-        # try:
-        #     laser = getLaser()
-        #     laserAngles = getLaserAngles()
-        #     print('The rightmost laser beam has angle %.3f deg from x-axis (streight forward) and distance %.3f meters.' % (
-        #         laserAngles[0], laser['Echoes'][0]
-        #     ))
-        #     print('Beam 1: %.3f Beam 269: %.3f Beam 270: %.3f' % (
-        #         laserAngles[0] * 180 / pi, laserAngles[269] * 180 / pi, laserAngles[270] * 180 / pi))
-        # except UnexpectedResponse as ex:
-        #     print('Unexpected response from server when reading laser data:', ex)
-        #
-        # try:
-        #     pose = get_robot_position()
-        #     print('Current position: ', pose['Pose']['Position'])
-        #     for t in range(30):
-        #         print('Current heading vector: X:{X:.3}, Y:{Y:.3}'.format(**getHeading()))
-        #         laser = getLaser()
-        #         print('Distance %.3f meters.' % (laser['Echoes'][135]))
-        #         if (laser['Echoes'][135] < 0.3):
-        #             print('Danger! Brace for impact! Hit the brakes!')
-        #             response = postSpeed(0, -0.1)
-        #         time.sleep(1)
-        # except UnexpectedResponse as ex:
-        #     print('Unexpected response from server when reading position:', ex)
+            postSpeed(-get_angular_speed_from_angle(math.degrees(rotation_angle)), 0)
+        time.sleep(0.1)
