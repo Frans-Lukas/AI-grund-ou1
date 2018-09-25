@@ -5,6 +5,8 @@ from math import sin, cos, radians, degrees, hypot, atan2
 from RestLokarria import *
 from Point import *
 import numpy as np
+import time
+
 
 MRDS_URL = 'localhost:50000'
 HEADERS = {"Content-type": "application/json", "Accept": "text/json"}
@@ -18,27 +20,18 @@ def angle_between(v1, v2):
     x2 = v2[0]
     y1 = v1[1]
     y2 = v2[1]
-
     dot = x1 * x2 + y1 * y2
     det = x1 * y2 - y1 * x2
     return atan2(det, dot)
-
-
-def get_angle(p1, p2):
-    return atan2(p1.x - p2.x, p1.y - p2.y)
 
 
 def get_distance(p1, p2):
     return hypot(p1.x - p2.x, p1.y - p2.y)
 
 
-def heading_to_point(robot_heading):
-    return Position(robot_heading.x, robot_heading.y, robot_heading.z)
-
-
 def get_heading_position():
-    heading = getHeading()
-    return Position(heading['X'], heading['Y'], 0)
+    h = getHeading()
+    return Position(h['X'], h['Y'], 0)
 
 
 def get_index_for_next_lookahead(i, robot_pos, plist, lookahead, length):
@@ -82,50 +75,53 @@ def rotate_point(point, a, center_point=(0, 0)):
 
 
 def get_angular_speed(degree_angle):
-    return 2 * (degree_angle / 100)
+    return 2 * (degree_angle / 35)
 
 
 def get_speed(degree_angle):
-    return 1 - (get_angular_speed(degree_angle)/2)
+    return 1
 
-
+'''
+BEST SPECS HITTILS: 
+lookahead : 1
+min_distance < 0.95
+angular_speed : return 2 * (degree_angle / 30)
+speed : 1.65 - (get_angular_speed(degree_angle)/2)
+'''
 if __name__ == '__main__':
+    print('Waiting for robot to start the race...')
     point_list = myJsonParser.read_json_file_to_list("Path-around-table-and-back.json")
     point_list.sort(key=lambda x: x.timestamp)
 
     list_length = len(point_list)
-    lookahead = 1
+    lookahead = 1.05
     target_point = point_list[testing_get_first_position(point_list, list_length, lookahead)]
     index = 0
+    start = time.time()
+    print("Go")
     while True:
 
-        # 1. Ta ut heading vector A
         heading_vector = position_to_vector(get_heading_position())
-
-        # 2. Ta ut vector B som vi ska till
         robot_position = get_robot_position()
-        print(get_distance(target_point.position, robot_position))
-        if get_distance(target_point.position, robot_position) < 0.9:
-            # target_point = choose_new_point_from_lookahead(target_point, robot_position, point_list, lookahead)
+
+        if get_distance(target_point.position, robot_position) < 1:
             index = get_index_for_next_lookahead(index, robot_position, point_list, lookahead, list_length)
             target_point = point_list[index]
-        to_point_vector = points_to_vector(robot_position, target_point.position)
+            if get_distance(target_point.position, robot_position) <= 1:
+                end = time.time()
+                postSpeed(0, 0)
+                print("Time: " + str((end - start)))
+                exit()
 
-        # 3. Normalisera vektorerna A och B ( Längden ska vara 1 )
+        to_point_vector = points_to_vector(robot_position, target_point.position)
         heading_vector = normalize_vector(heading_vector)
         to_point_vector = normalize_vector(to_point_vector)
-
-        # 4. Ta reda på hur många grader man behöver vända vektor A för att den ska lägga sig på X-axel.
         angle = degrees(angle_between(heading_vector, [1, 0]))
-
-        # 5. Rotera vektor B med lika många grader
         to_point_vector = rotate_point(to_point_vector, angle, center_point=(0, 0))
-
-        # 6. arcsin(By) ger om det är + lr -
-        # 7. arcos(Bx) ger vinkel
         angle = degrees(np.arccos(to_point_vector[0]))
+
         if np.arcsin(to_point_vector[1]) > 0:
             postSpeed(get_angular_speed(angle), get_speed(angle))
         else:
             postSpeed(-get_angular_speed(angle), get_speed(angle))
-        time.sleep(0.01)
+        time.sleep(0.05)
