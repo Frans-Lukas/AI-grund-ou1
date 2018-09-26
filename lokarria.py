@@ -126,7 +126,8 @@ if __name__ == '__main__':
         robot_position = get_robot_position()
 
         if get_distance(target_point.position, robot_position) < 1:
-            index = get_index_for_next_lookahead(index, robot_position, point_list, lookahead, list_length)
+            index = get_index_for_next_lookahead(index, robot_position,
+                                                 point_list, lookahead, list_length)
             target_point = point_list[index]
             if get_distance(target_point.position, robot_position) <= 1:
                 end = time.time()
@@ -147,4 +148,4 @@ if __name__ == '__main__':
             postSpeed(get_angular_speed(angle), get_speed(angle))
         else:
             postSpeed(-get_angular_speed(angle), get_speed(angle))
-        time.sleep(0.05)
+        time.sleep(0.03)
